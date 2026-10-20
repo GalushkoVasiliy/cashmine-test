@@ -59,6 +59,15 @@ export function ErrorBox({ message, onRetry }: { message: string; onRetry?: () =
   );
 }
 
+export function Line({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 3, gap: 12 }}>
+      <Text style={s.label}>{label}</Text>
+      <Text style={[s.value, strong && { fontWeight: '700' }, { flexShrink: 1, textAlign: 'right' }]}>{value}</Text>
+    </View>
+  );
+}
+
 export const s = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg, width: '100%', maxWidth: 480, alignSelf: 'center' },
   card: {

@@ -1,34 +1,21 @@
-import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { useMemo } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
-import { api, qk } from '../api/endpoints';
+import { isUnresolved } from '../claims/intents';
+import { useBalances } from '../claims/useBalances';
 import { Button, Card, colors, ErrorBox, s, Screen } from '../components/ui';
 import { freshnessLabel, isStale, snapshotAgeMs } from '../lib/freshness';
 import { useAuthedToken, useToken } from '../lib/token';
 import { useNow } from '../lib/useNow';
 import { displayUnits, formatUsd } from '../money';
-import { parseBalance, totals } from '../money/balances';
 
 export default function Home() {
   const token = useAuthedToken();
   const { clearToken } = useToken();
   const now = useNow();
-  const q = useQuery({
-    queryKey: qk.balances(token),
-    queryFn: () => api.balances(token),
-    refetchInterval: 15_000,
-  });
-
-  const parsed = useMemo(() => {
-    if (!q.data) return null;
-    try {
-      const items = q.data.items.map(parseBalance);
-      return { ok: true as const, items, totals: totals(items) };
-    } catch (e) {
-      return { ok: false as const, error: e instanceof Error ? e.message : 'Bad data' };
-    }
-  }, [q.data]);
+  const { q, parsed, intents } = useBalances(token);
+  const active = intents.filter(
+    (i) => isUnresolved(i) || i.claim?.status === 'pending' || (i.claim?.status === 'failed' && now - Date.parse(i.claim.updatedAt) < 120_000),
+  );
 
   const age = q.data ? snapshotAgeMs(q.data.asOf, now) : Infinity;
   const stale = q.data ? isStale(age) : false;
@@ -43,6 +30,21 @@ export default function Home() {
         {q.isError && !q.data && <ErrorBox message={`Could not load balances: ${q.error.message}`} onRetry={() => q.refetch()} />}
 
         {parsed && !parsed.ok && <ErrorBox message={`Unexpected balance data: ${parsed.error}`} />}
+
+        {active.map((i) => (
+          <Pressable key={i.key} onPress={() => router.push(`/claims/${i.key}`)}>
+            <Card style={{ borderColor: i.claim?.status === 'failed' ? colors.danger : colors.primary }}>
+              <Text style={{ fontWeight: '600' }}>
+                {i.claim?.status === 'failed'
+                  ? `Claim of ${i.body.amount} ${i.body.asset} failed — the amount was returned to available.`
+                  : isUnresolved(i)
+                    ? `Checking claim of ${i.body.amount} ${i.body.asset}…`
+                    : `Claim of ${i.body.amount} ${i.body.asset} is processing`}
+              </Text>
+              <Text style={[s.label, { marginTop: 4 }]}>Tap for status</Text>
+            </Card>
+          </Pressable>
+        ))}
 
         {parsed?.ok && q.data && (
           <>
@@ -74,6 +76,7 @@ export default function Home() {
                   <Row label="Available" value={displayUnits(b.available, b.decimals)} />
                   <Row label="Pending" value={displayUnits(b.pending, b.decimals)} />
                   <Row label="Claiming" value={displayUnits(b.claiming, b.decimals)} />
+                  {b.updating && <Text style={[s.label, { color: colors.warn, marginTop: 4 }]}>Updating after your claim…</Text>}
                 </Card>
               </Pressable>
             ))}

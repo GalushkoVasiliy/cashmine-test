@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Stack } from 'expo-router';
 import { useState } from 'react';
+import { IntentRunner } from '../claims/runner';
 import { TokenScreen } from '../components/TokenScreen';
 import { TokenProvider, useToken } from '../lib/token';
 
@@ -8,11 +9,14 @@ function Gate() {
   const { token } = useToken();
   if (!token) return <TokenScreen />;
   return (
-    <Stack screenOptions={{ headerTitleAlign: 'center' }}>
-      <Stack.Screen name="index" options={{ title: 'Payback' }} />
-      <Stack.Screen name="claim" options={{ title: 'Claim' }} />
-      <Stack.Screen name="claims/[id]" options={{ title: 'Claim status' }} />
-    </Stack>
+    <>
+      <IntentRunner key={token} token={token} />
+      <Stack screenOptions={{ headerTitleAlign: 'center' }}>
+        <Stack.Screen name="index" options={{ title: 'Payback' }} />
+        <Stack.Screen name="claim" options={{ title: 'Claim' }} />
+        <Stack.Screen name="claims/[id]" options={{ title: 'Claim status' }} />
+      </Stack>
+    </>
   );
 }
 
