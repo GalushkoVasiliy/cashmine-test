@@ -1,16 +1,11 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect } from 'react';
 import { ActivityIndicator, ScrollView, Text, View } from 'react-native';
-import { api, qk } from '../../api/endpoints';
-import { intentStore, tokenFingerprint, useIntents } from '../../claims/intents';
+import { qk } from '../../api/endpoints';
+import { tokenFingerprint, useIntents } from '../../claims/intents';
+import { claimPollQuery } from '../../claims/polling';
 import { Button, Card, colors, ErrorBox, Line, s, Screen } from '../../components/ui';
 import { useAuthedToken } from '../../lib/token';
-
-/** Poll fast at first (claims settle in ~20s), then back off. 429s are handled by the client. */
-function pollInterval(polls: number): number {
-  return polls < 10 ? 2000 : 5000;
-}
 
 // The route param is the intent's Idempotency-Key, so the screen works (and
 // resumes) before the server has given us a claim id.
@@ -22,25 +17,8 @@ export default function ClaimStatus() {
   const claimId = intent?.claim?.id;
   const terminal = intent?.claim?.status === 'completed' || intent?.claim?.status === 'failed';
 
-  const poll = useQuery({
-    queryKey: qk.claim(token, claimId ?? ''),
-    queryFn: () => api.claim(token, claimId!),
-    enabled: !!claimId && !terminal,
-    refetchInterval: (query) => {
-      const st = query.state.data?.status;
-      if (st && st !== 'pending') return false;
-      return pollInterval(query.state.dataUpdateCount);
-    },
-  });
-
-  useEffect(() => {
-    const c = poll.data;
-    if (!c || !intent?.claim) return;
-    if (c.status !== intent.claim.status || c.updatedAt !== intent.claim.updatedAt) {
-      intentStore.update(intent.key, { claim: c });
-      if (c.status !== 'pending') qc.invalidateQueries({ queryKey: qk.balances(token) });
-    }
-  }, [poll.data, intent, qc, token]);
+  // Same query the background runner polls; the runner writes results into the intent store.
+  const poll = useQuery({ ...claimPollQuery(token, claimId ?? ''), enabled: !!claimId && !terminal });
 
   if (!intent) {
     return (

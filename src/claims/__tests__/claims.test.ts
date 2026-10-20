@@ -83,6 +83,25 @@ describe('driveIntent', () => {
   });
 });
 
+describe('applyClaimUpdate', () => {
+  beforeEach(() => intentStore._reset());
+
+  it('reports settled once when a pending claim completes, then unchanged', () => {
+    intentStore.add(intent({ state: 'created', claim }));
+    const done = { ...claim, status: 'completed' as const, updatedAt: '2026-10-20T20:00:30Z' };
+    expect(intentStore.applyClaimUpdate('k1', done)).toBe('settled');
+    expect(intentStore.get('k1')?.claim?.status).toBe('completed');
+    expect(intentStore.applyClaimUpdate('k1', done)).toBe('unchanged');
+  });
+
+  it('ignores a claim with a different id or an unknown key', () => {
+    intentStore.add(intent({ state: 'created', claim }));
+    expect(intentStore.applyClaimUpdate('k1', { ...claim, id: 'other', status: 'failed' })).toBe('unchanged');
+    expect(intentStore.applyClaimUpdate('nope', claim)).toBe('unchanged');
+    expect(intentStore.get('k1')?.claim?.status).toBe('pending');
+  });
+});
+
 describe('applyOverlay', () => {
   const btc = parseBalance({ asset: 'BTC', decimals: 8, available: '1', pending: '0', claiming: '0', usdPrice: '100' });
 

@@ -1,5 +1,5 @@
 import { ApiError, classifyStatus, errorFromResponse, retryAfterFrom } from '../errors';
-import { getJson, retryDelay, RETRY } from '../client';
+import { getJson, retryDelay, RETRY, setUnauthorizedHandler } from '../client';
 
 describe('classifyStatus', () => {
   it('splits definite / retryable / unknown by method', () => {
@@ -91,5 +91,14 @@ describe('getJson', () => {
     globalThis.fetch = f as unknown as typeof fetch;
     await expect(getJson('t', '/v1/z')).rejects.toMatchObject({ kind: 'definite', field: 'asset' });
     expect(f).toHaveBeenCalledTimes(1);
+  });
+
+  it('tells the 401 handler which token was rejected', async () => {
+    globalThis.fetch = jest.fn(() => json(401, { error: { code: 'UNAUTHORIZED', message: 'no' } })) as unknown as typeof fetch;
+    const handler = jest.fn();
+    setUnauthorizedHandler(handler);
+    await expect(getJson('old-token', '/v1/balances')).rejects.toMatchObject({ kind: 'unauthorized' });
+    expect(handler).toHaveBeenCalledWith('old-token');
+    setUnauthorizedHandler(null);
   });
 });

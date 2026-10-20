@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
-import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { clearInFlight, setUnauthorizedHandler } from '../api/client';
 import { storage } from './storage';
 
@@ -19,6 +19,8 @@ export function TokenProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient();
   const [token, setTokenState] = useState<string | null>(() => storage.get(TOKEN_KEY));
   const [reason, setReason] = useState<string | null>(null);
+  // Current token, readable from the 401 handler without re-registering it.
+  const tokenRef = useRef(token);
 
   // Everything cached belongs to the old token: cancel it and drop it.
   const reset = useCallback(() => {
@@ -30,6 +32,7 @@ export function TokenProvider({ children }: { children: ReactNode }) {
   const setToken = useCallback(
     (t: string) => {
       reset();
+      tokenRef.current = t;
       storage.set(TOKEN_KEY, t);
       setReason(null);
       setTokenState(t);
@@ -40,6 +43,7 @@ export function TokenProvider({ children }: { children: ReactNode }) {
   const clearToken = useCallback(
     (why?: string) => {
       reset();
+      tokenRef.current = null;
       storage.remove(TOKEN_KEY);
       setReason(why ?? null);
       setTokenState(null);
@@ -48,7 +52,11 @@ export function TokenProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
-    setUnauthorizedHandler(() => clearToken('The token was rejected (401). Enter a valid token.'));
+    setUnauthorizedHandler((rejected) => {
+      // Ignore 401s for a token the user already replaced.
+      if (rejected !== tokenRef.current) return;
+      clearToken('The token was rejected (401). Enter a valid token.');
+    });
     return () => setUnauthorizedHandler(null);
   }, [clearToken]);
 

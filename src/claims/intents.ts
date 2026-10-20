@@ -70,6 +70,17 @@ export const intentStore = {
   update(key: string, patch: Partial<ClaimIntent>) {
     commit(intents.map((i) => (i.key === key ? { ...i, ...patch } : i)));
   },
+  /**
+   * Store a freshly polled claim. Returns 'settled' when it just reached
+   * completed/failed (balances should be refetched), 'updated', or 'unchanged'.
+   */
+  applyClaimUpdate(key: string, latest: Claim): 'unchanged' | 'updated' | 'settled' {
+    const prev = intents.find((i) => i.key === key)?.claim;
+    if (!prev || prev.id !== latest.id) return 'unchanged';
+    if (prev.status === latest.status && prev.updatedAt === latest.updatedAt) return 'unchanged';
+    commit(intents.map((i) => (i.key === key ? { ...i, claim: latest } : i)));
+    return prev.status === 'pending' && latest.status !== 'pending' ? 'settled' : 'updated';
+  },
   subscribe(l: () => void) {
     listeners.add(l);
     return () => listeners.delete(l);

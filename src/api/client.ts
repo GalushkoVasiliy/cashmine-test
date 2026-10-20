@@ -1,9 +1,13 @@
 import { API_BASE_URL } from './config';
 import { ApiError, errorFromResponse, isAbort, networkError } from './errors';
 
-let onUnauthorized: (() => void) | null = null;
-/** The token provider registers this so any 401 sends the user back to the token screen. */
-export function setUnauthorizedHandler(fn: (() => void) | null) {
+let onUnauthorized: ((rejectedToken: string) => void) | null = null;
+/**
+ * The token provider registers this so a 401 sends the user back to the token
+ * screen. It gets the token that was rejected, so a late 401 from an old token
+ * cannot log out a newer one.
+ */
+export function setUnauthorizedHandler(fn: ((rejectedToken: string) => void) | null) {
   onUnauthorized = fn;
 }
 
@@ -46,7 +50,7 @@ export async function request<T>(token: string, path: string, opts: RequestOptio
   }
   if (!res.ok) {
     const err = errorFromResponse(res.status, method, json, res.headers.get('Retry-After'));
-    if (err.kind === 'unauthorized') onUnauthorized?.();
+    if (err.kind === 'unauthorized') onUnauthorized?.(token);
     throw err;
   }
   return { data: json as T, status: res.status, headers: res.headers };
