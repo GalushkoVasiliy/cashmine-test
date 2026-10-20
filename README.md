@@ -16,7 +16,7 @@ Open the printed localhost URL (designed for ~390px phone width). On first open 
 ```bash
 npm test            # unit tests (money, API client, claims, freshness, activity)
 npx tsc --noEmit    # typecheck
-npx expo export --platform web   # static build in dist/ (vercel.json / public/_redirects add SPA rewrites)
+npx expo export --platform web   # static build in dist/
 ```
 
 Deploy: every push to `main` runs `.github/workflows/pages.yml` (tests, then a web build with `EXPO_BASE_URL=/cashmine-test`, `404.html` as the SPA fallback) and publishes to GitHub Pages.
