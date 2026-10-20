@@ -2,7 +2,7 @@
 
 Expo (React Native) web app that shows exchange-fee payback balances and lets the user claim them.
 
-**Live:** _add the deployed URL here_
+**Live:** https://galushkovasiliy.github.io/cashmine-test/
 
 ## Run locally
 
@@ -18,6 +18,8 @@ npm test            # unit tests (money, API client, claims, freshness, activity
 npx tsc --noEmit    # typecheck
 npx expo export --platform web   # static build in dist/ (vercel.json / public/_redirects add SPA rewrites)
 ```
+
+Deploy: every push to `main` runs `.github/workflows/pages.yml` (tests, then a web build with `EXPO_BASE_URL=/cashmine-test`, `404.html` as the SPA fallback) and publishes to GitHub Pages.
 
 ## What works
 
