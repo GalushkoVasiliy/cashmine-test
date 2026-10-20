@@ -84,6 +84,7 @@ export default function Home() {
 
             <View style={{ gap: 12, marginTop: 8 }}>
               <Button title="Claim" onPress={() => router.push('/claim')} />
+              <Button title="Activity" variant="secondary" onPress={() => router.push('/activity')} />
               <Button title="Refresh" variant="secondary" onPress={() => q.refetch()} />
             </View>
           </>
