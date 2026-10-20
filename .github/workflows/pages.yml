@@ -23,7 +23,9 @@ jobs:
         with:
           node-version: 24
           cache: npm
-      - run: npm ci
+      - run: npm --version
+      # The runner's npm can be stricter about optional deps in a lock made on macOS.
+      - run: npm ci || { echo "::warning::npm ci failed, falling back to npm install"; npm install --no-audit --no-fund; }
       - run: npm test -- --ci
       - run: npx expo export --platform web
         env:
